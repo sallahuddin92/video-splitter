@@ -151,6 +151,38 @@ async def process_segment_endpoint(request: ProcessSegmentRequest):
         logger.error(f"Process segment error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/stream-segment")
+async def stream_segment_get(
+    url: str, 
+    start: int, 
+    end: int, 
+    segment_index: str, 
+    format_id: str = None
+):
+    """
+    GET version of process-segment to allow direct browser downloads (native progress bar).
+    """
+    try:
+        # 1. Get direct URL
+        # Note: We re-fetch info here. Caching would be better but this is safer for fresh links.
+        info = get_video_info(url, format_id) 
+        direct_url = info['url']
+        if not direct_url:
+             direct_url = get_video_url(url)
+
+        # 2. Stream
+        filename = f"video_part_{segment_index}.mp4"
+        
+        return StreamingResponse(
+            stream_video_segment(direct_url, start, end, info.get('audio_url')),
+            media_type="video/mp4",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        logger.error(f"Stream segment error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/process")
 async def process_split_endpoint(request: ProcessRequest, background_tasks: BackgroundTasks):
     try:

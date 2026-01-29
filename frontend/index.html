@@ -603,34 +603,21 @@
             try {
                 const formatId = document.getElementById('qualitySelect').value;
 
-                // Reuse process-segment with 0 to totalDuration
-                // Giving it index "full" for filename
-                const res = await fetch(`${API_BASE}/process-segment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        url: currentUrl,
-                        start: 0,
-                        end: currentTotalDuration,
-                        segment_index: "full",
-                        format_id: formatId || null
-                    })
+                // Construct GET URL for direct browser download
+                const queryParams = new URLSearchParams({
+                    url: currentUrl,
+                    start: 0,
+                    end: Math.floor(currentTotalDuration),
+                    segment_index: "full",
+                    format_id: formatId || ""
                 });
 
-                if (!res.ok) throw new Error('Download failed');
+                // Trigger download
+                window.location.href = `${API_BASE}/stream-segment?${queryParams.toString()}`;
 
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `full_video.mp4`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-
-                btn.innerHTML = '<i class="fas fa-check"></i> Done';
-                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
+                // Reset button after a short delay (we can't know exactly when it starts, but 3s is enough to see reaction)
+                btn.innerHTML = '<i class="fas fa-check"></i> Started';
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 3000);
 
             } catch (e) {
                 btn.innerHTML = '<i class="fas fa-times"></i> Failed';
@@ -648,32 +635,19 @@
             const formatId = document.getElementById('qualitySelect').value;
 
             try {
-                const res = await fetch(`${API_BASE}/process-segment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        url: currentUrl,
-                        start,
-                        end,
-                        segment_index: index,
-                        format_id: formatId || null
-                    })
+                // Construct GET URL for direct browser download
+                const queryParams = new URLSearchParams({
+                    url: currentUrl,
+                    start: start,
+                    end: end,
+                    segment_index: index,
+                    format_id: formatId || ""
                 });
 
-                if (!res.ok) throw new Error('Download failed');
+                window.location.href = `${API_BASE}/stream-segment?${queryParams.toString()}`;
 
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `video_part_${index}.mp4`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-
-                btn.innerHTML = '<i class="fas fa-check"></i> Done';
-                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
+                btn.innerHTML = '<i class="fas fa-check"></i> Started';
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 3000);
 
             } catch (e) {
                 btn.innerHTML = '<i class="fas fa-times"></i> Failed';
