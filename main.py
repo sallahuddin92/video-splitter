@@ -21,13 +21,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_headers=["*"],
 )
-
-from fastapi.staticfiles import StaticFiles
-
-# Serve frontend directly
-app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 
 class VideoRequest(BaseModel):
     url: str
@@ -43,7 +37,7 @@ class ProcessSegmentRequest(BaseModel):
     url: str
     start: int
     end: int
-    segment_index: int
+    segment_index: int | str
 
 class ProcessRequest(BaseModel):
     url: str
