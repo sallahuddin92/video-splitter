@@ -47,7 +47,13 @@ def get_video_info(url: str):
         'no_warnings': True,
         'simulate': True,
         'forceurl': True,
-        # 'user_agent': 'Mozilla/5.0 ...' # Deprecated in favor of client emulation
+        'nocheckcertificate': True,
+        'ignoreerrors': True,
+        'geo_bypass': True,
+        'force_ipv4': True,
+        'quiet': True,
+    }
+
     # List of client configurations to try in order
     client_strategies = [
         ['android'],
