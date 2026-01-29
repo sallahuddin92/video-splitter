@@ -97,7 +97,7 @@ def get_video_info(url: str, format_id: str = None):
             'extractor_args': {
                 'youtube': {
                     'player_client': clients,
-                    'skip': ['dash', 'hls']
+                    # 'skip': ['dash', 'hls']  <-- ENABLED DASH/HLS for 1080p
                 }
             }
         })
@@ -121,19 +121,24 @@ def get_video_info(url: str, format_id: str = None):
                     formats = []
                     if 'formats' in info:
                         for f in info['formats']:
-                            # Filter for mp4 video files with audio, or just video
-                            # Simple logic: must have height (video)
-                            if f.get('height') and f.get('ext') == 'mp4':
+                            # Filter for ANY video file (webm, mp4, etc.)
+                            # ffmpeg will re-encode to mp4 for output anyway.
+                            if f.get('height'):
                                 label = f"{f.get('height')}p"
                                 if f.get('filesize'):
                                     size_mb = f.get('filesize') / (1024 * 1024)
                                     label += f" ({size_mb:.1f}MB)"
                                 
+                                # Mark if it's video-only (common for 1080p+)
+                                if f.get('acodec') == 'none':
+                                    label += " (Video Only)"
+                                
                                 formats.append({
                                     "format_id": f.get('format_id'),
                                     "resolution": f"{f.get('width')}x{f.get('height')}",
                                     "height": f.get('height'),
-                                    "label": label
+                                    "label": label,
+                                    "ext": f.get('ext')
                                 })
                     
                     # Dedup by height, keeping best quality usually at end of list
