@@ -57,7 +57,7 @@ def get_cookie_file():
         logger.error(f"Failed to create cookie file: {e}")
         return None
 
-def get_video_info(url: str):
+def get_video_info(url: str, format_id: str = None):
     """
     Extracts video metadata (duration, title, etc) + direct URL.
     Returns a dict with 'duration' (seconds) and 'url'.
@@ -116,11 +116,58 @@ def get_video_info(url: str):
                              duration = float(probe['format']['duration'])
                          except:
                              duration = 0
-                             
+                    
+                    # Extract formats
+                    formats = []
+                    if 'formats' in info:
+                        for f in info['formats']:
+                            # Filter for mp4 video files with audio, or just video
+                            # Simple logic: must have height (video)
+                            if f.get('height') and f.get('ext') == 'mp4':
+                                label = f"{f.get('height')}p"
+                                if f.get('filesize'):
+                                    size_mb = f.get('filesize') / (1024 * 1024)
+                                    label += f" ({size_mb:.1f}MB)"
+                                
+                                formats.append({
+                                    "format_id": f.get('format_id'),
+                                    "resolution": f"{f.get('width')}x{f.get('height')}",
+                                    "height": f.get('height'),
+                                    "label": label
+                                })
+                    
+                    # Dedup by height, keeping best quality usually at end of list
+                    # Reverse to show highest first? frontend can handle sort.
+                    # Let's clean up: unique by height.
+                    unique_formats = {}
+                    for f in formats:
+                        unique_formats[f['height']] = f
+                    
+                    # Sort by height descending
+                    sorted_formats = sorted(unique_formats.values(), key=lambda x: x['height'], reverse=True)
+
+                    # Select URL based on format_id if provided
+                    selected_url = info.get('url')
+                    if format_id and formats:
+                        for f in formats:
+                            if f['format_id'] == format_id:
+                                # We need the direct url from the original info formats list?
+                                # wait, 'formats' list I built above only has metadata.
+                                # I need to look at info['formats'] again.
+                                break
+                        
+                        # Better way: look in info['formats'] directly
+                        for f in info.get('formats', []):
+                            if f.get('format_id') == format_id:
+                                selected_url = f.get('url')
+                                logger.info(f"Selected specific format: {format_id} ({f.get('height')}p)")
+                                break
+
                     return {
-                        'url': info.get('url'),
+                        'url': selected_url,
                         'duration': duration,
-                        'title': info.get('title', 'video')
+                        'title': info.get('title', 'video'),
+                        'formats': sorted_formats
                     }
                     
         except Exception as e:

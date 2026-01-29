@@ -13,9 +13,24 @@ Make sure your backend is running on the Mac Mini:
 ```bash
 cd ~/Desktop/downloader
 source venv/bin/activate
+# Standard run (stops if you close terminal):
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
-*(Keep this terminal open)*
+
+#### Option: Run in Background (Keep running after closing terminal)
+To keep it running forever **and see logs instantly**, use this:
+```bash
+nohup env PYTHONUNBUFFERED=1 venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+```
+- **To Stop it later**:
+  Run `ps aux | grep uvicorn` to find the Process ID (PID), then `kill [PID]`.
+
+#### View Logs Real-Time
+To see the logs while it runs in the background:
+```bash
+tail -f app.log
+```
+Press `Ctrl+C` to stop watching logs (server keeps running).
 
 ### Step 2: Install Cloudflare Tunnel
 Open a **new terminal tab** and run:

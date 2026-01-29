@@ -440,6 +440,9 @@
                     <option value="yt">Platform: YouTube</option>
                     <option value="ig">Platform: Instagram</option>
                 </select>
+                <select class="setting-select" id="qualitySelect" style="display:none; min-width: 150px;">
+                    <option value="">Quality: Best</option>
+                </select>
             </div>
         </div>
 
@@ -471,8 +474,7 @@
     </footer>
 
     <script>
-        // API_BASE is empty for unified deployment (relative path)
-        const API_BASE = "";
+        const API_BASE = "https://mac-mini-muhammad.tail37d787.ts.net";
         let currentUrl = "";
         let currentTotalDuration = 0;
 
@@ -526,6 +528,21 @@
                 document.getElementById('totalDuration').textContent = formatDuration(data.total_duration);
                 document.getElementById('segmentCount').textContent = data.segments.length;
                 currentTotalDuration = data.total_duration;
+
+                // Populate Quality Dropdown
+                const qualitySelect = document.getElementById('qualitySelect');
+                qualitySelect.innerHTML = '<option value="">Quality: Best</option>';
+                qualitySelect.style.display = 'none';
+
+                if (data.formats && data.formats.length > 0) {
+                    data.formats.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = f.format_id;
+                        opt.textContent = `${f.label} (${f.resolution})`;
+                        qualitySelect.appendChild(opt);
+                    });
+                    qualitySelect.style.display = 'inline-block';
+                }
 
                 // Handle Full Download Mode
                 if (chunkDuration === 0) {
@@ -583,6 +600,8 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
             try {
+                const formatId = document.getElementById('qualitySelect').value;
+
                 // Reuse process-segment with 0 to totalDuration
                 // Giving it index "full" for filename
                 const res = await fetch(`${API_BASE}/process-segment`, {
@@ -592,7 +611,8 @@
                         url: currentUrl,
                         start: 0,
                         end: currentTotalDuration,
-                        segment_index: "full"
+                        segment_index: "full",
+                        format_id: formatId || null
                     })
                 });
 
@@ -624,11 +644,19 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
+            const formatId = document.getElementById('qualitySelect').value;
+
             try {
                 const res = await fetch(`${API_BASE}/process-segment`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: currentUrl, start, end, segment_index: index })
+                    body: JSON.stringify({
+                        url: currentUrl,
+                        start,
+                        end,
+                        segment_index: index,
+                        format_id: formatId || null
+                    })
                 });
 
                 if (!res.ok) throw new Error('Download failed');

@@ -38,6 +38,7 @@ class ProcessSegmentRequest(BaseModel):
     start: int
     end: int
     segment_index: int | str
+    format_id: str | None = None
 
 class ProcessRequest(BaseModel):
     url: str
@@ -118,7 +119,8 @@ async def analyze_video_endpoint(request: AnalyzeRequest):
         return {
             "title": title,
             "total_duration": duration,
-            "segments": segments
+            "segments": segments,
+            "formats": info.get('formats', [])
         }
         
     except Exception as e:
@@ -129,7 +131,7 @@ async def analyze_video_endpoint(request: AnalyzeRequest):
 async def process_segment_endpoint(request: ProcessSegmentRequest):
     try:
         # 1. Get direct URL
-        info = get_video_info(request.url) 
+        info = get_video_info(request.url, request.format_id) 
         direct_url = info['url']
         if not direct_url:
              direct_url = get_video_url(request.url)
