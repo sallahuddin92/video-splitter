@@ -65,11 +65,11 @@ def get_video_info(url: str, format_id: str = None):
     cookie_file = get_cookie_file()
     
     ydl_opts = {
-        'format': 'best',
+        # 'format': 'best', # REMOVED: restricting to 'best' breaks DASH extraction on web client
         'quiet': True,
         'no_warnings': True,
         'simulate': True,
-        'forceurl': True,
+        # 'forceurl': True, # REMOVED: this forces format resolution which fails on DASH split streams
         'nocheckcertificate': True,
         'ignoreerrors': True,
         'geo_bypass': True,
@@ -84,7 +84,10 @@ def get_video_info(url: str, format_id: str = None):
     # List of client configurations to try in order
     # List of client configurations to try in order
     # 'web' client often exposes full range of formats (1080p, 4K) via DASH.
+    # List of client configurations to try in order
+    # 'default' uses yt-dlp internal defaults (often best for formats)
     client_strategies = [
+        ['default'],
         ['web'],
         ['android'],
         ['ios'],
@@ -95,12 +98,17 @@ def get_video_info(url: str, format_id: str = None):
     for attempt, clients in enumerate(client_strategies):
         logger.info(f"Attempt {attempt+1}/{len(client_strategies)} using clients: {clients}")
         
+        # Configure extractor args
+        youtube_args = {
+            # 'skip': ['dash', 'hls'] # Ensure DASH/HLS enabled
+        }
+        
+        if clients != ['default']:
+            youtube_args['player_client'] = clients
+            
         ydl_opts.update({
             'extractor_args': {
-                'youtube': {
-                    'player_client': clients,
-                    # 'skip': ['dash', 'hls']  <-- ENABLED DASH/HLS for 1080p
-                }
+                'youtube': youtube_args
             }
         })
 
@@ -126,7 +134,10 @@ def get_video_info(url: str, format_id: str = None):
                             # Filter for ANY video file (webm, mp4, etc.)
                             # ffmpeg will re-encode to mp4 for output anyway.
                                 # Normalize resolution availability
-                                h = f.get('height', 0)
+                                h = f.get('height') or 0
+                                if h == 0:
+                                    continue
+                                    
                                 label = f"{h}p"
                                 
                                 # Standard resolutions mapping
