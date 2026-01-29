@@ -48,46 +48,52 @@ def get_video_info(url: str):
         'simulate': True,
         'forceurl': True,
         # 'user_agent': 'Mozilla/5.0 ...' # Deprecated in favor of client emulation
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['tv', 'android_creator', 'android', 'ios'],
-                'skip': ['dash', 'hls']
+    # List of client configurations to try in order
+    client_strategies = [
+        ['android'],
+        ['ios'],
+        ['web'],
+        ['tv'],
+        ['mweb']
+    ]
+
+    for attempt, clients in enumerate(client_strategies):
+        logger.info(f"Attempt {attempt+1}/{len(client_strategies)} using clients: {clients}")
+        
+        ydl_opts.update({
+            'extractor_args': {
+                'youtube': {
+                    'player_client': clients,
+                    'skip': ['dash', 'hls']
+                }
             }
-        },
-        'nocheckcertificate': True,
-        'ignoreerrors': True,
-        'geo_bypass': True,
-        'force_ipv4': True,
-        'quiet': True,
-    }
+        })
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            logger.info(f"Extracting metadata for URL: {url}")
-            info = ydl.extract_info(url, download=False)
-
-            if not info:
-                logger.error("Extraction failed: No info returned")
-                return {"title": "Error", "duration": 0, "url": None}
-
-            duration = info.get('duration')
-            
-            # Fallback: Use ffprobe if yt-dlp fails to get duration (common for direct URLs)
-            if not duration:
-                try:
-                    logger.info("yt-dlp missing duration, trying ffprobe...")
-                    probe = ffmpeg.probe(url)
-                    duration = float(probe['format']['duration'])
-                except Exception as e:
-                    logger.warning(f"ffprobe failed to get duration: {e}")
-                    duration = 0
-
-            return {
-                'url': info.get('url'),
-                'duration': duration,
-                'title': info.get('title', 'video')
-            }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
                 
-    except Exception as e:
-        logger.error(f"Error extracting video metadata: {str(e)}")
-        raise e
+                if info:
+                    logger.info(f"Success with clients: {clients}")
+                    duration = info.get('duration')
+                    # Fallback for duration
+                    if not duration:
+                         try:
+                             probe = ffmpeg.probe(url)
+                             duration = float(probe['format']['duration'])
+                         except:
+                             duration = 0
+                             
+                    return {
+                        'url': info.get('url'),
+                        'duration': duration,
+                        'title': info.get('title', 'video')
+                    }
+                    
+        except Exception as e:
+            logger.warning(f"Failed with clients {clients}: {e}")
+            continue
+
+    # If all attempts fail
+    logger.error("All extraction strategies failed.")
+    return {"title": "Error", "duration": 0, "url": None}
