@@ -50,13 +50,14 @@ def get_video_info(url: str):
         # 'user_agent': 'Mozilla/5.0 ...' # Deprecated in favor of client emulation
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'web'],
+                'player_client': ['tv', 'android_creator', 'android', 'ios'],
                 'skip': ['dash', 'hls']
             }
         },
         'nocheckcertificate': True,
         'ignoreerrors': True,
         'geo_bypass': True,
+        'quiet': True,
     }
 
     try:
