@@ -440,9 +440,6 @@
                     <option value="yt">Platform: YouTube</option>
                     <option value="ig">Platform: Instagram</option>
                 </select>
-                <select class="setting-select" id="qualitySelect" style="display:none; min-width: 150px;">
-                    <option value="">Quality: Best</option>
-                </select>
             </div>
         </div>
 
@@ -462,7 +459,11 @@
                         <div class="stat-value" id="segmentCount">0</div>
                         <div class="stat-label">Segments</div>
                     </div>
-                    <!-- Full Download Button Removed from Header, now handled via dropdown logic -->
+                    <!-- Quality Select moved here -->
+                    <select class="setting-select" id="qualitySelect"
+                        style="display:none; padding: 6px 12px; font-size: 13px;">
+                        <option value="">Quality: Best</option>
+                    </select>
                 </div>
             </div>
             <div class="segments-list" id="segmentsList"></div>
