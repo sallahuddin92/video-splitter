@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Splitter - Download & Split Videos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00B056;
+            --primary-hover: #009e4d;
+            --bg-light: #f0f6fc;
+            --text-dark: #333;
+            --text-gray: #666;
+            --border-color: #ddd;
+            --radius: 30px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(180deg, var(--bg-light) 0%, #fff 300px);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: white;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .nav-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--text-dark);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .nav-links a {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 60px 20px 40px;
+        }
+
+        .hero h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .hero p {
+            color: var(--text-gray);
+            font-size: 16px;
+            margin-bottom: 35px;
+        }
+
+        /* Search Box - SnapSave Style */
+        .search-container {
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: var(--radius);
+            padding: 5px 5px 5px 20px;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .search-input {
+            flex: 1;
+            border: none;
+            padding: 15px 10px;
+            font-size: 15px;
+            outline: none;
+            color: var(--text-dark);
+            font-family: inherit;
+        }
+
+        .search-input::placeholder {
+            color: #aaa;
+        }
+
+        .paste-btn {
+            background: none;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            color: var(--text-gray);
+            font-size: 18px;
+            transition: color 0.2s;
+        }
+
+        .paste-btn:hover {
+            color: var(--primary);
+        }
+
+        .btn-download {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-download:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-download:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Settings Row */
+        .settings-row {
+            max-width: 500px;
+            margin: 25px auto 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .setting-select {
+            padding: 10px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            background: white;
+            font-size: 14px;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .setting-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Status */
+        .status-msg {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        .error {
+            color: #e53935;
+        }
+
+        .success {
+            color: var(--primary);
+        }
+
+        /* Results Section */
+        .results-section {
+            max-width: 700px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: none;
+        }
+
+        .results-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #eee;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .video-title {
+            font-weight: 600;
+            font-size: 16px;
+            max-width: 350px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-gray);
+        }
+
+        /* Segments List */
+        .segments-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .segment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background 0.15s;
+        }
+
+        .segment-item:hover {
+            background: #fafafa;
+        }
+
+        .segment-item:last-child {
+            border-bottom: none;
+        }
+
+        .segment-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .segment-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary) 0%, #00d466 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .segment-name {
+            font-weight: 500;
+            font-size: 15px;
+            margin-bottom: 3px;
+        }
+
+        .segment-time {
+            font-size: 13px;
+            color: var(--text-gray);
+        }
+
+        .btn-segment-dl {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-segment-dl:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-segment-dl:disabled {
+            background: #ccc;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-gray);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results-section.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .hero h1 {
+                font-size: 24px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .settings-row {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .video-stats {
+                gap: 15px;
+            }
+
+            .results-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">Video<span>Splitter</span></a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>Video Splitter</h1>
+        <p>Download & Split Facebook, YouTube, Instagram videos into segments</p>
+
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" class="search-input" id="urlInput" placeholder="Paste video URL here...">
+                <button class="paste-btn" onclick="pasteFromClipboard()" title="Paste from clipboard">
+                    <i class="far fa-clipboard"></i>
+                </button>
+                <button class="btn-download" id="analyzeBtn" onclick="analyzeVideo()">
+                    <span id="btnText">Download</span>
+                </button>
+            </div>
+
+            <div class="settings-row">
+                <select class="setting-select" id="splitDuration">
+                    <option value="30">Split: 30 seconds</option>
+                    <option value="60">Split: 1 minute</option>
+                    <option value="90">Split: 1.5 minutes</option>
+                    <option value="120">Split: 2 minutes</option>
+                </select>
+                <select class="setting-select" id="platformSelect">
+                    <option value="fb">Platform: Facebook</option>
+                    <option value="yt">Platform: YouTube</option>
+                    <option value="ig">Platform: Instagram</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+    </section>
+
+    <section class="results-section" id="resultsSection">
+        <div class="results-card">
+            <div class="results-header">
+                <div class="video-title" id="videoTitle">Video Title</div>
+                <div class="video-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="totalDuration">0:00</div>
+                        <div class="stat-label">Duration</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="segmentCount">0</div>
+                        <div class="stat-label">Segments</div>
+                    </div>
+                </div>
+            </div>
+            <div class="segments-list" id="segmentsList"></div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>Powered by <a href="#">VideoSplitter</a> • Fast & Free Video Downloads</p>
+    </footer>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+        let currentUrl = "";
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('urlInput').value = text;
+            } catch (err) {
+                console.log('Clipboard access denied');
+            }
+        }
+
+        async function analyzeVideo() {
+            const url = document.getElementById('urlInput').value.trim();
+            const chunkDuration = parseInt(document.getElementById('splitDuration').value);
+            const platform = document.getElementById('platformSelect').value;
+            const btn = document.getElementById('analyzeBtn');
+            const btnText = document.getElementById('btnText');
+            const status = document.getElementById('statusMsg');
+            const resultsSection = document.getElementById('resultsSection');
+            const segmentsList = document.getElementById('segmentsList');
+
+            if (!url) {
+                status.textContent = "Please paste a video URL";
+                status.className = "status-msg error";
+                return;
+            }
+
+            status.textContent = "";
+            resultsSection.classList.remove('show');
+            segmentsList.innerHTML = '';
+            btn.disabled = true;
+            btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            currentUrl = url;
+
+            try {
+                const res = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, chunk_duration: chunkDuration, platform })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed to analyze video');
+                }
+
+                const data = await res.json();
+
+                document.getElementById('videoTitle').textContent = data.title;
+                document.getElementById('totalDuration').textContent = formatDuration(data.total_duration);
+                document.getElementById('segmentCount').textContent = data.segments.length;
+
+                data.segments.forEach(seg => {
+                    const div = document.createElement('div');
+                    div.className = 'segment-item';
+                    div.innerHTML = `
+                    <div class="segment-info">
+                        <div class="segment-icon"><i class="fas fa-film"></i></div>
+                        <div>
+                            <div class="segment-name">Part ${seg.id}</div>
+                            <div class="segment-time">${formatTime(seg.start)} - ${formatTime(seg.end)}</div>
+                        </div>
+                    </div>
+                    <button class="btn-segment-dl" onclick="downloadSegment(this, ${seg.start}, ${seg.end}, ${seg.id})">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                `;
+                    segmentsList.appendChild(div);
+                });
+
+                resultsSection.classList.add('show');
+
+            } catch (e) {
+                status.textContent = "Error: " + e.message;
+                status.className = "status-msg error";
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = "Download";
+            }
+        }
+
+        async function downloadSegment(btn, start, end, index) {
+            if (!currentUrl) return;
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                const res = await fetch(`${API_BASE}/process-segment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: currentUrl, start, end, segment_index: index })
+                });
+
+                if (!res.ok) throw new Error('Download failed');
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `video_part_${index}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                btn.innerHTML = '<i class="fas fa-check"></i> Done';
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
+
+            } catch (e) {
+                btn.innerHTML = '<i class="fas fa-times"></i> Failed';
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
+            }
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return "0s";
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return m > 0 ? `${m}m ${s}s` : `${s}s`;
+        }
+    </script>
+
+</body>
+
+</html>
