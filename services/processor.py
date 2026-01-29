@@ -145,7 +145,7 @@ def stream_video_segment(direct_url: str, start: int, end: int):
 
     try:
         while True:
-            chunk = process.stdout.read(4096)
+            chunk = process.stdout.read(65536) # 64KB buffer for better performance over tunnel
             if not chunk:
                 break
             yield chunk
