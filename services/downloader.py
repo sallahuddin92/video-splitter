@@ -174,25 +174,31 @@ def get_video_info(url: str, format_id: str = None):
                     # Sort by height descending
                     sorted_formats = sorted(unique_formats.values(), key=lambda x: x['height'], reverse=True)
 
-                    # Select URL based on format_id if provided
                     selected_url = info.get('url')
-                    if format_id and formats:
-                        for f in formats:
-                            if f['format_id'] == format_id:
-                                # We need the direct url from the original info formats list?
-                                # wait, 'formats' list I built above only has metadata.
-                                # I need to look at info['formats'] again.
-                                break
-                        
-                        # Better way: look in info['formats'] directly
+                    audio_url = None
+                    
+                    # If format_id is provided, find that specific stream
+                    if format_id:
                         for f in info.get('formats', []):
                             if f.get('format_id') == format_id:
                                 selected_url = f.get('url')
                                 logger.info(f"Selected specific format: {format_id} ({f.get('height')}p)")
                                 break
-
+                    
+                    # Always try to find a separate audio track (bestaudio)
+                    # This is needed if the selected video stream is video-only (e.g. 1080p, 4K)
+                    # We look for m4a/aac usually for better compatibility or just best audio
+                    for f in info.get('formats', []):
+                        if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
+                            # Found an audio-only stream
+                            # Prefer m4a if available, else take any
+                            audio_url = f.get('url')
+                            if f.get('ext') == 'm4a':
+                                break 
+                                
                     return {
                         'url': selected_url,
+                        'audio_url': audio_url,
                         'duration': duration,
                         'title': info.get('title', 'video'),
                         'formats': sorted_formats

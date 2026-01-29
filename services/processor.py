@@ -123,25 +123,45 @@ def split_video(direct_url: str, chunk_duration: int, output_dir: str = "temp") 
         logger.error(f"FFmpeg split error: {e.stderr.decode('utf8') if e.stderr else str(e)}")
         raise RuntimeError(f"FFmpeg split failed: {e.stderr.decode('utf8') if e.stderr else str(e)}")
 
-def stream_video_segment(direct_url: str, start: int, end: int):
+def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str = None):
     """
     Generator that streams a specific video segment using ffmpeg.
     Yields chunks of bytes.
+    If audio_url is provided, it merges the video from direct_url with audio from audio_url.
     """
     duration = end - start
     if duration <= 0:
          raise ValueError("Invalid duration")
 
-    logger.info(f"Streaming segment: {start}-{end}s from {direct_url}")
+    logger.info(f"Streaming segment: {start}-{end}s from {direct_url} (Audio: {'Yes' if audio_url else 'No'})")
 
-    # FFmpeg command to pipe output to stdout
-    # -movflags frag_keyframe+empty_moov: Needed for MP4 streaming to stdout
-    process = (
-        ffmpeg
-        .input(direct_url, ss=start, t=duration)
-        .output('pipe:', vcodec='libx264', preset='fast', crf=23, acodec='aac', format='mp4', movflags='frag_keyframe+empty_moov')
-        .run_async(pipe_stdout=True, pipe_stderr=True)
-    )
+    # FFmpeg command construction
+    stream = ffmpeg.input(direct_url, ss=start, t=duration)
+    
+    if audio_url:
+        # If audio URL provided, add it as second input
+        audio_stream = ffmpeg.input(audio_url, ss=start, t=duration)
+        
+        # Map video from input 0, audio from input 1
+        # 'shortest=1' stops encoding when the shortest stream ends (avoids hanging)
+        process = (
+            ffmpeg
+            .output(stream, audio_stream, 'pipe:', 
+                   vcodec='libx264', preset='superfast', crf=23, 
+                   acodec='aac', format='mp4', 
+                   movflags='frag_keyframe+empty_moov', shortest=None)
+            .run_async(pipe_stdout=True, pipe_stderr=True)
+        )
+    else:
+        # Standard single-input stream
+        process = (
+            ffmpeg
+            .output(stream, 'pipe:', 
+                   vcodec='libx264', preset='superfast', crf=23, 
+                   acodec='aac', format='mp4', 
+                   movflags='frag_keyframe+empty_moov')
+            .run_async(pipe_stdout=True, pipe_stderr=True)
+        )
 
     try:
         while True:
