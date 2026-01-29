@@ -21,7 +21,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_headers=["*"],
 )
+
+from fastapi.staticfiles import StaticFiles
+
+# Serve frontend directly
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 
 class VideoRequest(BaseModel):
     url: str
