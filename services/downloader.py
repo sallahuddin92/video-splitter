@@ -82,10 +82,12 @@ def get_video_info(url: str, format_id: str = None):
         ydl_opts['cookiefile'] = cookie_file
 
     # List of client configurations to try in order
+    # List of client configurations to try in order
+    # 'web' client often exposes full range of formats (1080p, 4K) via DASH.
     client_strategies = [
+        ['web'],
         ['android'],
         ['ios'],
-        ['web'],
         ['tv'],
         ['mweb']
     ]
