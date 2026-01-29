@@ -433,6 +433,7 @@
                     <option value="60">Split: 1 minute</option>
                     <option value="90">Split: 1.5 minutes</option>
                     <option value="120">Split: 2 minutes</option>
+                    <option value="0">Download Full (No Split)</option>
                 </select>
                 <select class="setting-select" id="platformSelect">
                     <option value="fb">Platform: Facebook</option>
@@ -458,10 +459,7 @@
                         <div class="stat-value" id="segmentCount">0</div>
                         <div class="stat-label">Segments</div>
                     </div>
-                    <button class="btn-download" id="fullDownloadBtn"
-                        style="padding: 10px 20px; font-size: 13px; height: 42px;" onclick="downloadFullVideo(this)">
-                        <i class="fas fa-download"></i> Full Video
-                    </button>
+                    <!-- Full Download Button Removed from Header, now handled via dropdown logic -->
                 </div>
             </div>
             <div class="segments-list" id="segmentsList"></div>
@@ -528,23 +526,42 @@
                 document.getElementById('segmentCount').textContent = data.segments.length;
                 currentTotalDuration = data.total_duration;
 
-                data.segments.forEach(seg => {
+                // Handle Full Download Mode
+                if (chunkDuration === 0) {
                     const div = document.createElement('div');
                     div.className = 'segment-item';
                     div.innerHTML = `
-                    <div class="segment-info">
-                        <div class="segment-icon"><i class="fas fa-film"></i></div>
-                        <div>
-                            <div class="segment-name">Part ${seg.id}</div>
-                            <div class="segment-time">${formatTime(seg.start)} - ${formatTime(seg.end)}</div>
+                        <div class="segment-info">
+                            <div class="segment-icon"><i class="fas fa-video"></i></div>
+                            <div>
+                                <div class="segment-name">Full Video (No Split)</div>
+                                <div class="segment-time">${formatDuration(data.total_duration)}</div>
+                            </div>
                         </div>
-                    </div>
-                    <button class="btn-segment-dl" onclick="downloadSegment(this, ${seg.start}, ${seg.end}, ${seg.id})">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                `;
+                        <button class="btn-segment-dl" onclick="downloadFullVideo(this)">
+                            <i class="fas fa-download"></i> Download Full
+                        </button>
+                    `;
                     segmentsList.appendChild(div);
-                });
+                } else {
+                    data.segments.forEach(seg => {
+                        const div = document.createElement('div');
+                        div.className = 'segment-item';
+                        div.innerHTML = `
+                        <div class="segment-info">
+                            <div class="segment-icon"><i class="fas fa-film"></i></div>
+                            <div>
+                                <div class="segment-name">Part ${seg.id}</div>
+                                <div class="segment-time">${formatTime(seg.start)} - ${formatTime(seg.end)}</div>
+                            </div>
+                        </div>
+                        <button class="btn-segment-dl" onclick="downloadSegment(this, ${seg.start}, ${seg.end}, ${seg.id})">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    `;
+                        segmentsList.appendChild(div);
+                    });
+                }
 
                 resultsSection.classList.add('show');
 
