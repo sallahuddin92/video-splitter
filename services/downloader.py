@@ -57,6 +57,7 @@ def get_video_info(url: str):
         'nocheckcertificate': True,
         'ignoreerrors': True,
         'geo_bypass': True,
+        'force_ipv4': True,
         'quiet': True,
     }
 
@@ -64,7 +65,11 @@ def get_video_info(url: str):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logger.info(f"Extracting metadata for URL: {url}")
             info = ydl.extract_info(url, download=False)
-            
+
+            if not info:
+                logger.error("Extraction failed: No info returned")
+                return {"title": "Error", "duration": 0, "url": None}
+
             duration = info.get('duration')
             
             # Fallback: Use ffprobe if yt-dlp fails to get duration (common for direct URLs)
