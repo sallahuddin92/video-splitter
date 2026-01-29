@@ -92,18 +92,28 @@ async def analyze_video_endpoint(request: AnalyzeRequest):
         if duration == 0:
             raise HTTPException(status_code=400, detail="Could not determine video duration.")
             
-        num_segments = math.ceil(duration / request.chunk_duration)
-        segments = []
-        
-        for i in range(num_segments):
-            start = i * request.chunk_duration
-            end = min((i + 1) * request.chunk_duration, duration)
-            segments.append({
-                "id": i + 1,
-                "start": start,
-                "end": end,
-                "filename": f"part_{i+1}.mp4"
-            })
+        if request.chunk_duration == 0:
+            # Full video download mode
+            num_segments = 1
+            segments = [{
+                "id": 1,
+                "start": 0,
+                "end": duration,
+                "filename": "full_video.mp4"
+            }]
+        else:
+            num_segments = math.ceil(duration / request.chunk_duration)
+            segments = []
+            
+            for i in range(num_segments):
+                start = i * request.chunk_duration
+                end = min((i + 1) * request.chunk_duration, duration)
+                segments.append({
+                    "id": i + 1,
+                    "start": start,
+                    "end": end,
+                    "filename": f"part_{i+1}.mp4"
+                })
             
         return {
             "title": title,
