@@ -123,20 +123,30 @@ def get_video_info(url: str, format_id: str = None):
                         for f in info['formats']:
                             # Filter for ANY video file (webm, mp4, etc.)
                             # ffmpeg will re-encode to mp4 for output anyway.
-                            if f.get('height'):
-                                label = f"{f.get('height')}p"
+                                # Normalize resolution availability
+                                h = f.get('height', 0)
+                                label = f"{h}p"
+                                
+                                # Standard resolutions mapping
+                                if 1000 <= h <= 1100: label = "1080p"
+                                elif 700 <= h <= 750: label = "720p"
+                                elif 450 <= h <= 500: label = "480p"
+                                elif 330 <= h <= 390: label = "360p"
+                                elif 220 <= h <= 270: label = "240p"
+                                elif 130 <= h <= 160: label = "144p"
+                                
                                 if f.get('filesize'):
                                     size_mb = f.get('filesize') / (1024 * 1024)
                                     label += f" ({size_mb:.1f}MB)"
                                 
-                                # Mark if it's video-only (common for 1080p+)
+                                # Mark if it's video-only
                                 if f.get('acodec') == 'none':
                                     label += " (Video Only)"
                                 
                                 formats.append({
                                     "format_id": f.get('format_id'),
                                     "resolution": f"{f.get('width')}x{f.get('height')}",
-                                    "height": f.get('height'),
+                                    "height": h,
                                     "label": label,
                                     "ext": f.get('ext')
                                 })
