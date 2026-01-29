@@ -458,6 +458,10 @@
                         <div class="stat-value" id="segmentCount">0</div>
                         <div class="stat-label">Segments</div>
                     </div>
+                    <button class="btn-download" id="fullDownloadBtn"
+                        style="padding: 10px 20px; font-size: 13px; height: 42px;" onclick="downloadFullVideo(this)">
+                        <i class="fas fa-download"></i> Full Video
+                    </button>
                 </div>
             </div>
             <div class="segments-list" id="segmentsList"></div>
@@ -471,6 +475,7 @@
     <script>
         const API_BASE = "https://video-splitter-jkp7.onrender.com";
         let currentUrl = "";
+        let currentTotalDuration = 0;
 
         async function pasteFromClipboard() {
             try {
@@ -521,6 +526,7 @@
                 document.getElementById('videoTitle').textContent = data.title;
                 document.getElementById('totalDuration').textContent = formatDuration(data.total_duration);
                 document.getElementById('segmentCount').textContent = data.segments.length;
+                currentTotalDuration = data.total_duration;
 
                 data.segments.forEach(seg => {
                     const div = document.createElement('div');
@@ -548,6 +554,48 @@
             } finally {
                 btn.disabled = false;
                 btnText.textContent = "Download";
+            }
+        }
+
+        async function downloadFullVideo(btn) {
+            if (!currentUrl || !currentTotalDuration) return;
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            try {
+                // Reuse process-segment with 0 to totalDuration
+                // Giving it index "full" for filename
+                const res = await fetch(`${API_BASE}/process-segment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: currentUrl,
+                        start: 0,
+                        end: currentTotalDuration,
+                        segment_index: "full"
+                    })
+                });
+
+                if (!res.ok) throw new Error('Download failed');
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `full_video.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                btn.innerHTML = '<i class="fas fa-check"></i> Done';
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
+
+            } catch (e) {
+                btn.innerHTML = '<i class="fas fa-times"></i> Failed';
+                setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 2000);
             }
         }
 
