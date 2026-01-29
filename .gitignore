@@ -7,3 +7,4 @@ test_output/
 *.mp4
 *.zip
 .DS_Store
+verify_*.py
