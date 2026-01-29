@@ -143,13 +143,12 @@ def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str =
         audio_stream = ffmpeg.input(audio_url, ss=start, t=duration)
         
         # Map video from input 0, audio from input 1
-        # 'shortest=1' stops encoding when the shortest stream ends (avoids hanging)
         process = (
             ffmpeg
             .output(stream, audio_stream, 'pipe:', 
                    vcodec='libx264', preset='superfast', crf=23, 
                    acodec='aac', format='mp4', 
-                   movflags='frag_keyframe+empty_moov', shortest=None)
+                   movflags='frag_keyframe+empty_moov', shortest=None, loglevel="error")
             .run_async(pipe_stdout=True, pipe_stderr=True)
         )
     else:
@@ -159,7 +158,7 @@ def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str =
             .output(stream, 'pipe:', 
                    vcodec='libx264', preset='superfast', crf=23, 
                    acodec='aac', format='mp4', 
-                   movflags='frag_keyframe+empty_moov')
+                   movflags='frag_keyframe+empty_moov', loglevel="error")
             .run_async(pipe_stdout=True, pipe_stderr=True)
         )
 
