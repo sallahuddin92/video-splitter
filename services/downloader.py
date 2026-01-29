@@ -36,11 +36,34 @@ def get_video_url(url: str) -> str:
         logger.error(f"Error extracting video URL: {str(e)}")
         raise e
 
+import os
+import tempfile
+
+def get_cookie_file():
+    """
+    Checks for YOUTUBE_COOKIES env var. if present, writes to temp file and returns path.
+    """
+    cookies_content = os.environ.get("YOUTUBE_COOKIES")
+    if not cookies_content:
+        return None
+    
+    # Create a temp file
+    try:
+        fd, path = tempfile.mkstemp(suffix=".txt", text=True)
+        with os.fdopen(fd, 'w') as f:
+            f.write(cookies_content)
+        return path
+    except Exception as e:
+        logger.error(f"Failed to create cookie file: {e}")
+        return None
+
 def get_video_info(url: str):
     """
     Extracts video metadata (duration, title, etc) + direct URL.
     Returns a dict with 'duration' (seconds) and 'url'.
     """
+    cookie_file = get_cookie_file()
+    
     ydl_opts = {
         'format': 'best',
         'quiet': True,
@@ -53,6 +76,10 @@ def get_video_info(url: str):
         'force_ipv4': True,
         'quiet': True,
     }
+    
+    if cookie_file:
+        logger.info(f"Using cookies from environment variable")
+        ydl_opts['cookiefile'] = cookie_file
 
     # List of client configurations to try in order
     client_strategies = [

@@ -33,7 +33,23 @@ git push -u origin main
    - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 4. Click **Create Web Service**
 
-### Step 4: Wait for Deployment
+### Step 4: Add YouTube Cookies (Recommended to fix errors)
+If you see "Sign in to confirm you're not a bot" errors:
+
+1. **Get Cookies**:
+   - Install "Get cookies.txt LOCALLY" extension for Chrome/Edge.
+   - Go to YouTube.com and log in.
+   - Click the extension to download `cookies.txt`.
+   - Open the file and copy the **entire content**.
+
+2. **Add to Render**:
+   - Go to your Render Dashboard > **Environment**.
+   - Add new variable:
+     - **Key**: `YOUTUBE_COOKIES`
+     - **Value**: (Paste the entire text content from cookies.txt)
+   - Click **Save Changes**. Render will redeploy.
+
+### Step 5: Wait for Deployment
 - Render will build and deploy your app
 - Copy your URL: `https://video-splitter-api.onrender.com`
 
@@ -44,7 +60,7 @@ git push -u origin main
 ## Part 2: Deploy Frontend to Netlify
 
 ### Step 1: Update API URL in HTML
-Before deploying, update `ReelCutter.html`:
+Before deploying, update `ReelCutter.html` (or `frontend/index.html`):
 
 ```javascript
 // Change this line:
@@ -54,24 +70,10 @@ const API_BASE = "http://127.0.0.1:8000";
 const API_BASE = "https://video-splitter-api.onrender.com";
 ```
 
-### Step 2: Create Frontend Folder
-```bash
-mkdir frontend
-cp ReelCutter.html frontend/index.html
-```
-
-### Step 3: Deploy to Netlify
-**Option A: Drag & Drop**
+### Step 2: Deploy to Netlify
 1. Go to [app.netlify.com](https://app.netlify.com)
 2. Drag the `frontend` folder onto the page
 3. Done! Get your URL.
-
-**Option B: Netlify CLI**
-```bash
-npm install -g netlify-cli
-cd frontend
-netlify deploy --prod
-```
 
 ---
 
@@ -91,33 +93,3 @@ app.add_middleware(
     allow_headers=["*"],
 )
 ```
-
-Then push changes to GitHub - Render will auto-redeploy.
-
----
-
-## Quick Checklist
-
-| Step | Action | Status |
-|------|--------|--------|
-| 1 | Push code to GitHub | ⬜ |
-| 2 | Create Render web service | ⬜ |
-| 3 | Copy Render URL | ⬜ |
-| 4 | Update API_BASE in HTML | ⬜ |
-| 5 | Deploy frontend to Netlify | ⬜ |
-| 6 | Update CORS in main.py | ⬜ |
-| 7 | Test live site | ⬜ |
-
----
-
-## Troubleshooting
-
-**Backend not starting?**
-- Check Render logs for errors
-- Ensure `requirements.txt` includes all dependencies
-
-**CORS errors?**
-- Add your Netlify URL to `allow_origins` in `main.py`
-
-**Video download fails?**
-- Some platforms block server IPs - may need proxy configuration
