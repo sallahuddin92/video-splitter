@@ -142,7 +142,7 @@ async def process_segment_endpoint(request: ProcessSegmentRequest):
         # Determine if we should pass audio_url (for high-res video-only streams)
         # We pass it if it exists. processor.py will decide how to use it.
         return StreamingResponse(
-            stream_video_segment(direct_url, request.start, request.end, info.get('audio_url')),
+            stream_video_segment(direct_url, request.start, request.end, info.get('audio_url'), request.url, request.format_id),
             media_type="video/mp4",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
@@ -174,7 +174,7 @@ async def stream_segment_get(
         filename = f"video_part_{segment_index}.mp4"
         
         return StreamingResponse(
-            stream_video_segment(direct_url, start, end, info.get('audio_url')),
+            stream_video_segment(direct_url, start, end, info.get('audio_url'), url, format_id),
             media_type="video/mp4",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )

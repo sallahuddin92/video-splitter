@@ -123,65 +123,121 @@ def split_video(direct_url: str, chunk_duration: int, output_dir: str = "temp") 
         logger.error(f"FFmpeg split error: {e.stderr.decode('utf8') if e.stderr else str(e)}")
         raise RuntimeError(f"FFmpeg split failed: {e.stderr.decode('utf8') if e.stderr else str(e)}")
 
-def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str = None):
+def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str = None, original_url: str = None, format_id: str = None):
     """
     Generator that streams a specific video segment using ffmpeg.
     Yields chunks of bytes.
-    If audio_url is provided, it merges the video from direct_url with audio from audio_url.
+    
+    For YouTube URLs, uses yt-dlp subprocess to handle auth properly.
+    For other URLs (Facebook, etc), uses direct FFmpeg.
     """
+    import subprocess
+    
     duration = end - start
     if duration <= 0:
          raise ValueError("Invalid duration")
 
     logger.info(f"Streaming segment: {start}-{end}s from {direct_url} (Audio: {'Yes' if audio_url else 'No'})")
 
-    # HTTP headers for YouTube compatibility (prevents 403 Forbidden)
-    http_headers = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nReferer: https://www.youtube.com/"
-
-    # FFmpeg command construction with headers
-    stream = ffmpeg.input(direct_url, ss=start, t=duration, headers=http_headers)
+    # Check if this is a YouTube/googlevideo URL - they need special handling
+    is_youtube = 'googlevideo.com' in direct_url or 'youtube.com' in direct_url
     
-    if audio_url:
-        # If audio URL provided, add it as second input (also with headers)
-        audio_stream = ffmpeg.input(audio_url, ss=start, t=duration, headers=http_headers)
+    if is_youtube and original_url:
+        # Use yt-dlp to download and pipe through ffmpeg for trimming
+        logger.info(f"Using yt-dlp->ffmpeg pipeline for YouTube URL")
         
-        # Map video from input 0, audio from input 1
-        process = (
-            ffmpeg
-            .output(stream, audio_stream, 'pipe:', 
-                   vcodec='libx264', preset='superfast', crf=23, 
-                   acodec='aac', format='mp4', 
-                   movflags='frag_keyframe+empty_moov', shortest=None, loglevel="error")
-            .run_async(pipe_stdout=True, pipe_stderr=True)
-        )
+        # Build format selector
+        format_str = 'best[ext=mp4]/best' if not format_id else f'{format_id}+bestaudio/best'
+        
+        # yt-dlp command to download and merge
+        ytdlp_cmd = [
+            'yt-dlp',
+            '-f', format_str,
+            '--quiet',
+            '--no-warnings',
+            '-o', '-',  # Output to stdout
+            original_url
+        ]
+        
+        # ffmpeg command to trim and re-encode
+        ffmpeg_cmd = [
+            'ffmpeg',
+            '-i', 'pipe:0',  # Read from stdin
+            '-ss', str(start),
+            '-t', str(duration),
+            '-vcodec', 'libx264',
+            '-preset', 'superfast',
+            '-crf', '23',
+            '-acodec', 'aac',
+            '-f', 'mp4',
+            '-movflags', 'frag_keyframe+empty_moov',
+            '-loglevel', 'error',
+            'pipe:1'  # Output to stdout
+        ]
+        
+        # Create pipeline: yt-dlp | ffmpeg
+        ytdlp_process = subprocess.Popen(ytdlp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdin=ytdlp_process.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        try:
+            while True:
+                chunk = ffmpeg_process.stdout.read(65536)
+                if not chunk:
+                    break
+                yield chunk
+                
+            ffmpeg_process.stdout.close()
+            ffmpeg_process.wait()
+            ytdlp_process.wait()
+            
+            if ffmpeg_process.returncode != 0:
+                error = ffmpeg_process.stderr.read().decode('utf8')
+                logger.error(f"FFmpeg error in pipeline: {error}")
+                
+        except Exception as e:
+            logger.error(f"Pipeline error: {e}")
+            ytdlp_process.kill()
+            ffmpeg_process.kill()
     else:
-        # Standard single-input stream
-        process = (
-            ffmpeg
-            .output(stream, 'pipe:', 
-                   vcodec='libx264', preset='superfast', crf=23, 
-                   acodec='aac', format='mp4', 
-                   movflags='frag_keyframe+empty_moov', loglevel="error")
-            .run_async(pipe_stdout=True, pipe_stderr=True)
-        )
-
-    try:
-        while True:
-            chunk = process.stdout.read(65536) # 64KB buffer for better performance over tunnel
-            if not chunk:
-                break
-            yield chunk
-            
-        process.stdout.close()
-        process.wait()
+        # For non-YouTube URLs, use direct FFmpeg (Facebook, Instagram, etc work fine)
+        http_headers = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\nReferer: https://www.youtube.com/"
         
-        if process.returncode != 0:
-            error = process.stderr.read().decode('utf8')
-            logger.error(f"FFmpeg streaming error: {error}")
-            # We can't raise HTTP exception here easily once streaming started, 
-            # but log shows error.
-            
-    except Exception as e:
-        logger.error(f"Streaming exception: {e}")
-        process.kill()
+        stream = ffmpeg.input(direct_url, ss=start, t=duration, headers=http_headers)
+        
+        if audio_url:
+            audio_stream = ffmpeg.input(audio_url, ss=start, t=duration, headers=http_headers)
+            process = (
+                ffmpeg
+                .output(stream, audio_stream, 'pipe:', 
+                       vcodec='libx264', preset='superfast', crf=23, 
+                       acodec='aac', format='mp4', 
+                       movflags='frag_keyframe+empty_moov', shortest=None, loglevel="error")
+                .run_async(pipe_stdout=True, pipe_stderr=True)
+            )
+        else:
+            process = (
+                ffmpeg
+                .output(stream, 'pipe:', 
+                       vcodec='libx264', preset='superfast', crf=23, 
+                       acodec='aac', format='mp4', 
+                       movflags='frag_keyframe+empty_moov', loglevel="error")
+                .run_async(pipe_stdout=True, pipe_stderr=True)
+            )
 
+        try:
+            while True:
+                chunk = process.stdout.read(65536)
+                if not chunk:
+                    break
+                yield chunk
+                
+            process.stdout.close()
+            process.wait()
+            
+            if process.returncode != 0:
+                error = process.stderr.read().decode('utf8')
+                logger.error(f"FFmpeg streaming error: {error}")
+                
+        except Exception as e:
+            logger.error(f"Streaming exception: {e}")
+            process.kill()
