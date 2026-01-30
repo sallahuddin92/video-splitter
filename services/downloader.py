@@ -81,40 +81,16 @@ def get_video_info(url: str, format_id: str = None):
         logger.info(f"Using cookies from environment variable")
         ydl_opts['cookiefile'] = cookie_file
 
-    # List of client configurations to try in order
-    # 'android' returns direct MP4 URLs (best for ffmpeg processing)
-    # 'default' often returns HLS manifests which don't work well
-    client_strategies = [
-        ['android'],
-        ['ios'],
-        ['tv'],
-        ['web'],
-        ['mweb']
-    ]
+    # No client restriction - let yt-dlp use its defaults
+    # This returns the most formats (1080p, 720p, etc.) with direct URLs
+    logger.info("Extracting video info with yt-dlp defaults...")
 
-    for attempt, clients in enumerate(client_strategies):
-        logger.info(f"Attempt {attempt+1}/{len(client_strategies)} using clients: {clients}")
-        
-        # Configure extractor args
-        youtube_args = {
-            # 'skip': ['dash', 'hls'] # Ensure DASH/HLS enabled
-        }
-        
-        if clients != ['default']:
-            youtube_args['player_client'] = clients
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
             
-        ydl_opts.update({
-            'extractor_args': {
-                'youtube': youtube_args
-            }
-        })
-
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                
-                if info:
-                    logger.info(f"Success with clients: {clients}")
+            if info:
+                    logger.info("Successfully extracted video info")
                     duration = info.get('duration')
                     # Fallback for duration
                     if not duration:
@@ -226,11 +202,11 @@ def get_video_info(url: str, format_id: str = None):
                         'title': info.get('title', 'video'),
                         'formats': sorted_formats
                     }
+            
+            # If info is None/empty
+            logger.error("No video info returned")
+            return {"title": "Error", "duration": 0, "url": None, "formats": []}
                     
-        except Exception as e:
-            logger.warning(f"Failed with clients {clients}: {e}")
-            continue
-
-    # If all attempts fail
-    logger.error("All extraction strategies failed.")
-    return {"title": "Error", "duration": 0, "url": None}
+    except Exception as e:
+        logger.error(f"Extraction failed: {e}")
+        return {"title": "Error", "duration": 0, "url": None, "formats": []}
