@@ -135,12 +135,15 @@ def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str =
 
     logger.info(f"Streaming segment: {start}-{end}s from {direct_url} (Audio: {'Yes' if audio_url else 'No'})")
 
-    # FFmpeg command construction
-    stream = ffmpeg.input(direct_url, ss=start, t=duration)
+    # HTTP headers for YouTube compatibility (prevents 403 Forbidden)
+    http_headers = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\nReferer: https://www.youtube.com/"
+
+    # FFmpeg command construction with headers
+    stream = ffmpeg.input(direct_url, ss=start, t=duration, headers=http_headers)
     
     if audio_url:
-        # If audio URL provided, add it as second input
-        audio_stream = ffmpeg.input(audio_url, ss=start, t=duration)
+        # If audio URL provided, add it as second input (also with headers)
+        audio_stream = ffmpeg.input(audio_url, ss=start, t=duration, headers=http_headers)
         
         # Map video from input 0, audio from input 1
         process = (
