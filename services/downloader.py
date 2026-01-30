@@ -177,6 +177,10 @@ def get_video_info(url: str, format_id: str = None):
                     selected_url = info.get('url')
                     audio_url = None
                     
+                    # Helper to check if URL is an HLS manifest (not directly streamable by ffmpeg for trimming)
+                    def is_hls_url(url):
+                        return url and ('.m3u8' in url or 'manifest' in url)
+                    
                     # If format_id is provided, find that specific stream
                     if format_id:
                         for f in info.get('formats', []):
@@ -185,14 +189,36 @@ def get_video_info(url: str, format_id: str = None):
                                 logger.info(f"Selected specific format: {format_id} ({f.get('height')}p)")
                                 break
                     
+                    # CRITICAL: If selected_url is HLS manifest, find a direct URL instead
+                    # HLS manifests don't work well with ffmpeg -ss for trimming
+                    if is_hls_url(selected_url):
+                        logger.warning(f"Got HLS manifest URL, searching for direct URL...")
+                        # Look for a direct MP4 URL with video+audio (progressive)
+                        for f in info.get('formats', []):
+                            url = f.get('url')
+                            if url and not is_hls_url(url) and f.get('height') and f.get('acodec') != 'none':
+                                selected_url = url
+                                logger.info(f"Found direct progressive URL: {f.get('format_id')} ({f.get('height')}p)")
+                                break
+                        
+                        # If still HLS, try any direct video URL (even video-only)
+                        if is_hls_url(selected_url):
+                            for f in info.get('formats', []):
+                                url = f.get('url')
+                                if url and not is_hls_url(url) and f.get('height'):
+                                    selected_url = url
+                                    logger.info(f"Found direct video-only URL: {f.get('format_id')} ({f.get('height')}p)")
+                                    break
+                    
                     # Always try to find a separate audio track (bestaudio)
                     # This is needed if the selected video stream is video-only (e.g. 1080p, 4K)
                     # We look for m4a/aac usually for better compatibility or just best audio
                     for f in info.get('formats', []):
-                        if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
-                            # Found an audio-only stream
+                        url = f.get('url')
+                        if f.get('vcodec') == 'none' and f.get('acodec') != 'none' and url and not is_hls_url(url):
+                            # Found an audio-only stream with direct URL
                             # Prefer m4a if available, else take any
-                            audio_url = f.get('url')
+                            audio_url = url
                             if f.get('ext') == 'm4a':
                                 break 
                                 
