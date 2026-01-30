@@ -143,61 +143,76 @@ def stream_video_segment(direct_url: str, start: int, end: int, audio_url: str =
     is_youtube = 'googlevideo.com' in direct_url or 'youtube.com' in direct_url
     
     if is_youtube and original_url:
-        # Use yt-dlp to download and pipe through ffmpeg for trimming
+        # Use yt-dlp to download to temp file, then ffmpeg to stream
         logger.info(f"Using yt-dlp->ffmpeg pipeline for YouTube URL")
+        
+        import tempfile
         
         # Build format selector
         format_str = 'best[ext=mp4]/best' if not format_id else f'{format_id}+bestaudio/best'
         
-        # yt-dlp command to download and merge
-        ytdlp_cmd = [
-            'yt-dlp',
-            '-f', format_str,
-            '--quiet',
-            '--no-warnings',
-            '-o', '-',  # Output to stdout
-            original_url
-        ]
-        
-        # ffmpeg command to trim and re-encode
-        ffmpeg_cmd = [
-            'ffmpeg',
-            '-i', 'pipe:0',  # Read from stdin
-            '-ss', str(start),
-            '-t', str(duration),
-            '-vcodec', 'libx264',
-            '-preset', 'superfast',
-            '-crf', '23',
-            '-acodec', 'aac',
-            '-f', 'mp4',
-            '-movflags', 'frag_keyframe+empty_moov',
-            '-loglevel', 'error',
-            'pipe:1'  # Output to stdout
-        ]
-        
-        # Create pipeline: yt-dlp | ffmpeg
-        ytdlp_process = subprocess.Popen(ytdlp_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ffmpeg_process = subprocess.Popen(ffmpeg_cmd, stdin=ytdlp_process.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Create temp file for yt-dlp output
+        temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+        temp_path = temp_file.name
+        temp_file.close()
         
         try:
-            while True:
-                chunk = ffmpeg_process.stdout.read(65536)
-                if not chunk:
-                    break
-                yield chunk
-                
-            ffmpeg_process.stdout.close()
-            ffmpeg_process.wait()
-            ytdlp_process.wait()
+            # Step 1: Download with yt-dlp to temp file
+            ytdlp_cmd = [
+                'yt-dlp',
+                '-f', format_str,
+                '--quiet',
+                '--no-warnings',
+                '-o', temp_path,
+                '--force-overwrites',
+                original_url
+            ]
             
-            if ffmpeg_process.returncode != 0:
-                error = ffmpeg_process.stderr.read().decode('utf8')
-                logger.error(f"FFmpeg error in pipeline: {error}")
+            logger.info(f"Downloading with yt-dlp to {temp_path}...")
+            result = subprocess.run(ytdlp_cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                logger.error(f"yt-dlp error: {result.stderr}")
+                # Cleanup and fallback
+                os.unlink(temp_path)
+                return
+            
+            logger.info(f"Download complete, streaming with ffmpeg...")
+            
+            # Step 2: Stream from temp file with ffmpeg
+            stream = ffmpeg.input(temp_path, ss=start, t=duration)
+            process = (
+                ffmpeg
+                .output(stream, 'pipe:', 
+                       vcodec='libx264', preset='superfast', crf=23, 
+                       acodec='aac', format='mp4', 
+                       movflags='frag_keyframe+empty_moov', loglevel="error")
+                .run_async(pipe_stdout=True, pipe_stderr=True)
+            )
+            
+            try:
+                while True:
+                    chunk = process.stdout.read(65536)
+                    if not chunk:
+                        break
+                    yield chunk
+                    
+                process.stdout.close()
+                process.wait()
                 
-        except Exception as e:
-            logger.error(f"Pipeline error: {e}")
-            ytdlp_process.kill()
-            ffmpeg_process.kill()
+                if process.returncode != 0:
+                    error = process.stderr.read().decode('utf8')
+                    logger.error(f"FFmpeg error: {error}")
+                    
+            except Exception as e:
+                logger.error(f"FFmpeg streaming exception: {e}")
+                process.kill()
+                
+        finally:
+            # Always cleanup temp file
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+                logger.info(f"Cleaned up temp file: {temp_path}")
     else:
         # For non-YouTube URLs, use direct FFmpeg (Facebook, Instagram, etc work fine)
         http_headers = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\nReferer: https://www.youtube.com/"
